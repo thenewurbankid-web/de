@@ -157,17 +157,28 @@ function goalsFor(i) {
 }
 
 /* ═══════════ Speech ═══════════ */
-let voices = [];
-function loadVoices() { try { voices = speechSynthesis.getVoices().filter(v => /^de/i.test(v.lang)); } catch (e) { voices = []; } }
-if ("speechSynthesis" in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+let voices = [], voicesReady = false, voiceWarned = false;
+// Best German voices first: neural/online/premium voices sound far more natural
+const VOICE_PREF = [/google deutsch/i, /natural|neural|online/i, /premium|enhanced|erweitert/i, /^anna|helena|petra|markus|yannick|katja|conrad|hedda|stefan|vicki|marlene|hans/i];
+function voiceScore(v) { let s = 0; VOICE_PREF.forEach((r, i) => { if (r.test(v.name)) s += 10 - i * 2; }); if (/de[-_]DE/i.test(v.lang)) s += 2; return s; }
+function loadVoices() {
+  const before = voices.length;
+  try { const all = speechSynthesis.getVoices(); if (all.length) voicesReady = true; voices = all.filter(v => /^de([-_]|$)/i.test(v.lang)).sort((a, b) => voiceScore(b) - voiceScore(a)); } catch (e) { voices = []; }
+  if (voicesReady && !voices.length) { const n = $("#voicewarn"); if (n) n.classList.remove("hidden"); }
+  if (voices.length !== before && /einstellungen|heute/.test(location.hash) && typeof render === "function" && $("#main")) render();
+}
+if ("speechSynthesis" in window) { loadVoices(); speechSynthesis.addEventListener ? speechSynthesis.addEventListener("voiceschanged", loadVoices) : (speechSynthesis.onvoiceschanged = loadVoices); setTimeout(loadVoices, 800); }
+function germanVoice() { if (!voices.length) loadVoices(); return voices.find(v => v.name === S.settings.voice) || voices[0] || null; }
 function speak(text, rate) {
   if (!("speechSynthesis" in window)) { toast(H("Dein Browser kann keine Sprachausgabe.", "Your browser has no speech output.")); return; }
+  const v = germanVoice();
+  if (!v && voicesReady && !voiceWarned) { voiceWarned = true; toast(`<span class="err">${H("Keine deutsche Stimme installiert – die Aussprache klingt falsch.", "No German voice installed – pronunciation will sound wrong.")}</span> <a href="#einstellungen">${H("So geht's", "How to fix")}</a>`); }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(String(text).replace(/[…_]+/g, " ").replace(/–/g, ","));
-  u.lang = "de-DE"; u.rate = rate || S.settings.rate;
-  const v = voices.find(v => v.name === S.settings.voice) || voices.find(v => /de-DE/i.test(v.lang)) || voices[0];
+  u.lang = v ? v.lang.replace("_", "-") : "de-DE"; u.rate = rate || S.settings.rate;
   if (v) u.voice = v;
-  speechSynthesis.speak(u); return u;
+  // Chrome sometimes drops an utterance spoken right after cancel()
+  setTimeout(() => speechSynthesis.speak(u), 30); return u;
 }
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 function listen() {
@@ -415,6 +426,7 @@ function viewToday(m) {
     <p class="lead">${l ? `${H("Heute", "Today")}: <b>${HP(l.title)}</b> – ${HP(l.goal)}` : d.type === "mock" ? H(`Heute testest du dein ${d.level}-Niveau.`, `Today you test your ${d.level} level.`) : d.type === "milestone" ? H("Du kannst jetzt einkaufen, bestellen und nach dem Weg fragen!", "You can now shop, order and ask the way!") : H("Heute festigst du, was du gelernt hast.", "Today you consolidate what you've learned.")}</p></div>
     <div class="ring" style="--p:${pct(done / goals.length)}"><span>${done}/${goals.length}</span></div>
   </section>
+  ${voicesReady && !voices.length ? `<section class="panel"><b class="err">${H("Keine deutsche Stimme gefunden – die Aussprache klingt falsch.", "No German voice found – pronunciation will sound wrong.")}</b> <a href="#einstellungen">${H("So installierst du eine", "How to install one")} →</a></section>` : ""}
   <section class="panel"><h2>${H("Tagesziele", "Daily goals")}</h2>
     <ul class="goals">${goals.map(x => `<li class="${x.done ? "done" : ""}">
       ${x.manual ? `<button class="chk" data-man="${x.k}" aria-label="abhaken">${x.done ? "✓" : ""}</button>` : `<span class="chk">${x.done ? "✓" : ""}</span>`}
@@ -681,7 +693,14 @@ function viewSettings(m) {
   m.innerHTML = `<section class="panel"><h1>${H("Einstellungen", "Settings")}</h1>
     <label>${H("Name", "Name")}<input id="sname" value="${esc(S.name)}"></label>
     <label>${H("Minuten pro Tag", "Minutes per day")}<select id="smin">${[20, 30, 40, 45, 60].map(x => `<option ${x === S.settings.minutes ? "selected" : ""}>${x}</option>`).join("")}</select></label>
-    <label>${H("Stimme", "Voice")}<select id="svoice"><option value="">${H("Standard (de-DE)", "Default (de-DE)")}</option>${voices.map(v => `<option ${v.name === S.settings.voice ? "selected" : ""}>${esc(v.name)}</option>`).join("")}</select></label>
+    <label>${H("Deutsche Stimme", "German voice")}<select id="svoice"><option value="">${H("Automatisch: beste deutsche Stimme", "Automatic: best German voice")}${voices[0] ? " (" + esc(voices[0].name) + ")" : ""}</option>${voices.map(v => `<option value="${esc(v.name)}" ${v.name === S.settings.voice ? "selected" : ""}>${esc(v.name)} · ${esc(v.lang)}${v.localService ? "" : " · online"}</option>`).join("")}</select></label>
+    <div id="voicewarn" class="panel inset ${voices.length || !voicesReady ? "hidden" : ""}"><b class="err">${H("Auf diesem Gerät ist keine deutsche Stimme installiert.", "No German voice is installed on this device.")}</b>
+      <p class="small">${H("Darum liest eine englische Stimme den deutschen Text – das klingt falsch. So installierst du eine:", "So an English voice reads the German text, which sounds wrong. Install one like this:")}</p>
+      <ul class="small bul"><li><b>Mac:</b> ${H("Systemeinstellungen → Bedienungshilfen → Gesprochene Inhalte → Systemstimme → Stimmen verwalten → Deutsch → „Anna (Premium)“ laden. Dann Browser neu starten.", "System Settings → Accessibility → Spoken Content → System voice → Manage Voices → German → download 'Anna (Premium)'. Then restart the browser.")}</li>
+      <li><b>Windows:</b> ${H("Einstellungen → Zeit und Sprache → Sprache → Deutsch hinzufügen (mit Sprachausgabe). Oder Edge benutzen: dort gibt es „Microsoft Katja Online (Natural)“.", "Settings → Time & language → Language → add German (with speech). Or use Edge, which has 'Microsoft Katja Online (Natural)'.")}</li>
+      <li><b>iPhone:</b> ${H("Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen → Deutsch → Anna laden.", "Settings → Accessibility → Spoken Content → Voices → German → download Anna.")}</li>
+      <li><b>Chrome:</b> ${H("Chrome hat „Google Deutsch“ eingebaut (braucht Internet).", "Chrome has 'Google Deutsch' built in (needs internet).")}</li></ul></div>
+    <p class="small muted">${H("Gefunden", "Found")}: ${voices.length} ${H("deutsche Stimmen", "German voices")}${voices.length ? " – " + voices.slice(0, 4).map(v => esc(v.name)).join(", ") : ""}</p>
     <label>${H("Sprechtempo", "Speech rate")} <span id="rv">${S.settings.rate}</span><input type="range" id="srate" min="0.5" max="1.2" step="0.05" value="${S.settings.rate}"></label>
     <div class="row"><button class="btn" id="ssave">${H("Speichern", "Save")}</button><button class="btn ghost" id="stest">${ICON.spk} ${H("Testen", "Test")}</button></div></section>
   <section class="panel"><h2>${H("Plan-Tag", "Plan day")}</h2><p class="small muted">${H("Du kannst schon Deutsch? Spring zu einem Tag.", "Already know some German? Jump to a day.")}</p>
