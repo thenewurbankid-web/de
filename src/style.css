@@ -23,7 +23,13 @@ h3{font-size:18px;margin:10px 0}
 .h{border-bottom:1px dotted rgba(255,255,255,.16);cursor:help}
 h1 .h,h2 .h,.eyebrow .h,.qhint .h,small .h{border-bottom:0}
 nav .h,.btn .h,.tabs .h,.pill .h,.chip .h,.lcard .h,.tcard .h,.steps .h{border-bottom:0}
-#tip{position:fixed;z-index:99;display:none;max-width:320px;background:rgba(20,20,22,.96);border:1px solid var(--line2);color:var(--ac2);padding:6px 10px;border-radius:9px;font-size:13px;pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+#tip{position:fixed;z-index:99;display:none;max-width:400px;max-height:70vh;overflow:hidden;background:rgba(20,20,22,.97);border:1px solid var(--line2);color:var(--tx);padding:9px 11px;border-radius:10px;font-size:13px;pointer-events:none;box-shadow:0 10px 34px rgba(0,0,0,.5)}
+#tip .ten{color:var(--ac2);font-weight:600;margin-bottom:6px;line-height:1.4}
+#tip .gt{border-collapse:collapse;width:100%}
+#tip .gt td{padding:3px 6px 3px 0;vertical-align:top;border-top:1px solid var(--line);line-height:1.35}
+#tip .gw{font-weight:600;white-space:nowrap;color:var(--tx);padding-right:10px}
+#tip .gn{color:var(--mu);font-size:11.5px}
+#tip .gq{color:var(--mu)}
 .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(226,173,85,.55);background:linear-gradient(180deg,rgba(226,173,85,.24),rgba(226,173,85,.12));color:var(--tx);padding:9px 16px;border-radius:10px;font:inherit;font-weight:600;cursor:pointer;transition:.15s}
 .btn:hover{background:rgba(226,173,85,.3)}
 .btn:disabled{opacity:.4;cursor:default}

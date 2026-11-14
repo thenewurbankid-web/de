@@ -12,7 +12,7 @@ cat <<'H'
 H
 cat src/style.css
 echo '</style></head><body><div id="app"></div><script>'
-cat src/data.js src/extra.js src/tutor.js src/app.js
+cat src/data.js src/extra.js src/lexicon.js src/tutor.js src/app.js
 echo '</script></body></html>'
 } > index.html
 echo "built index.html ($(wc -c < index.html) bytes)"

@@ -61,9 +61,9 @@ function msgHtml(m, i) {
   if (m.hidden) return "";
   const lines = m.content.split("\n").filter(x => x.trim());
   const body = lines.map(x => {
-    if (/^korrektur\s*:/i.test(x)) return `<div class="corr">✏️ ${esc(x.replace(/^korrektur\s*:\s*/i, ""))} ${speakBtn(x.replace(/^korrektur\s*:\s*/i, ""))}</div>`;
-    if (/^erklärung\s*:/i.test(x)) return `<div class="expl">${esc(x.replace(/^erklärung\s*:\s*/i, ""))}</div>`;
-    return `<div>${esc(x)}</div>`;
+    if (/^korrektur\s*:/i.test(x)) return `<div class="corr">✏️ <span class="h" data-mi="${i}" data-en="">${esc(x.replace(/^korrektur\s*:\s*/i, ""))}</span> ${speakBtn(x.replace(/^korrektur\s*:\s*/i, ""))}</div>`;
+    if (/^erklärung\s*:/i.test(x)) return `<div class="expl"><span class="h" data-mi="${i}" data-en="">${esc(x.replace(/^erklärung\s*:\s*/i, ""))}</span></div>`;
+    return `<div><span class="h" data-mi="${i}" data-en="${esc(m.en && m.en !== "…" && lines.length === 1 ? m.en : "")}">${esc(x)}</span></div>`;
   }).join("");
   return `<div class="msg ${m.role}">${m.role === "assistant" ? `<div class="mtools">${speakBtn(m.content.replace(/^korrektur:.*$/gim, ""))}<button class="trbtn h" data-tr="${i}" data-en="${esc(m.en || "Translate to English")}">EN</button></div>` : ""}<div class="mbody">${body || (TUTOR.busy ? '<span class="dots">…</span>' : "")}</div>${m.en ? `<div class="mtrans">${esc(m.en)}</div>` : ""}</div>`;
 }

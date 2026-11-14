@@ -358,19 +358,21 @@ function runQuiz(host, qs, { title, onDone }) {
 
 /* ═══════════ Tooltip (English on hover / tap) ═══════════ */
 const tip = document.createElement("div"); tip.id = "tip"; document.body.appendChild(tip);
-let tipTimer;
+let tipTimer, tipShownAt = 0;
 function showTip(el) {
-  const en = el.dataset.en; if (!en) return;
-  tip.textContent = en; tip.style.display = "block";
+  const en = el.dataset.en || "", de = el.dataset.de || el.textContent.trim(); if (!en && !de) return;
+  let note = "";
+  if (!en && el.dataset.mi != null && typeof TUTOR !== "undefined" && TUTOR.engine) { const msg = TUTOR.msgs[+el.dataset.mi]; if (msg && msg.en && msg.en !== "…") note = msg.en; else { note = "(Übersetzung kommt … / translating …)"; if (msg && msg.role === "assistant") translateMsg(+el.dataset.mi); } }
+  tip.innerHTML = glossHtml(de, en || note); tip.style.display = "block"; tipShownAt = Date.now();
   const r = el.getBoundingClientRect(), tr = tip.getBoundingClientRect();
   let x = r.left + r.width / 2 - tr.width / 2; x = Math.max(8, Math.min(innerWidth - tr.width - 8, x));
-  let y = r.top - tr.height - 8; if (y < 8) y = r.bottom + 8;
+  let y = r.top - tr.height - 8; if (y < 8) y = r.bottom + 8; if (y + tr.height > innerHeight - 8) y = Math.max(8, innerHeight - tr.height - 8);
   tip.style.left = x + "px"; tip.style.top = y + "px";
 }
 const hideTip = () => { tip.style.display = "none"; };
 document.addEventListener("mouseover", e => { const h = e.target.closest(".h"); if (h) showTip(h); else hideTip(); });
 document.addEventListener("touchstart", e => { const h = e.target.closest(".h"); clearTimeout(tipTimer); if (h) { showTip(h); tipTimer = setTimeout(hideTip, 2600); } else hideTip(); }, { passive: true });
-document.addEventListener("scroll", hideTip, true);
+document.addEventListener("scroll", () => { if (Date.now() - tipShownAt > 400) hideTip(); }, true);
 document.addEventListener("click", e => { const b = e.target.closest("[data-say]"); if (b) { e.stopPropagation(); speak(b.dataset.say, b.classList.contains("slow") ? 0.6 : undefined); } }, true);
 
 function toast(html) { const t = document.createElement("div"); t.className = "toast"; t.innerHTML = html; document.body.appendChild(t); setTimeout(() => t.remove(), 3500); }
@@ -479,7 +481,7 @@ function viewLesson(m, path) {
   if (tab === "lernen") {
     b.innerHTML = `<section class="panel"><h2>${H("So funktioniert's", "How it works")}</h2><ul class="gram">${l.grammar.map(g => `<li>${HP(g)}</li>`).join("")}</ul></section>
       <section class="panel"><div class="row between"><h2>${H("Wörter", "Words")}</h2><button class="btn ghost sm" id="playall">${ICON.spk} ${H("Alle anhören", "Play all")}</button></div>
-      <div class="vocab">${l.vocab.map(v => `<div class="vrow">${speakBtn(v[0])}<span class="de">${esc(v[0])}</span><span class="en">${esc(v[1])}</span></div>`).join("")}</div></section>
+      <div class="vocab">${l.vocab.map(v => `<div class="vrow">${speakBtn(v[0])}<span class="de h" data-en="${esc(v[1])}">${esc(v[0])}</span><span class="en">${esc(v[1])}</span></div>`).join("")}</div></section>
       <section class="panel"><h2>${H("Beispielsätze", "Example sentences")}</h2>
       <div class="exs">${l.ex.map(e => `<div class="ex">${speakBtn(e[0])} ${speakBtn(e[0], "slow")} ${H(e[0], e[1])}</div>`).join("")}</div></section>
       <section class="panel mission"><h2>${H("Deine Mission in Berlin", "Your Berlin mission")}</h2><p>${HP(l.mission)}</p></section>
@@ -508,7 +510,7 @@ function cardSession(host, cards, { learn, done } = {}) {
     host.innerHTML = `<section class="panel flash"><div class="qtop"><span>${learn ? H("Neue Wörter", "New words") : H("Wiederholen", "Review")}</span><span>${queue.length} ${H("übrig", "left")}</span></div>
       <div class="bar thin"><i style="width:${pct((total - queue.length) / Math.max(1, total))}%"></i></div>
       <div class="card" id="card"><div class="front">${rev ? `<div class="qbig en">${esc(c.en)}</div>` : `<div class="qbig">${esc(c.de)}</div>`}<div class="muted small">${H("Tippen zum Umdrehen", "Tap to flip")}</div></div>
-      <div class="back hidden"><div class="qbig">${esc(c.de)} ${speakBtn(c.de)}</div><div class="en">${esc(c.en)}</div></div></div>
+      <div class="back hidden"><div class="qbig">${H(c.de, c.en)} ${speakBtn(c.de)}</div><div class="en">${esc(c.en)}</div></div></div>
       <div class="row center rates hidden" id="rates"><button class="btn ghost" data-r="0">${H("Nochmal", "Again")}</button><button class="btn" data-r="1">${H("Gewusst", "Knew it")}</button><button class="btn ghost" data-r="2">${H("Leicht", "Easy")}</button></div></section>`;
     if (!rev) speak(c.de);
     const flip = () => { $(".front", host).classList.add("hidden"); $(".back", host).classList.remove("hidden"); $("#rates", host).classList.remove("hidden"); if (rev) speak(c.de); };
